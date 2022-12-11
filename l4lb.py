@@ -73,25 +73,19 @@ class L4Lb(app_manager.RyuApp):
         arph = pkt.get_protocols(arp.arp)
         
         if arph:
-            # print(1)
             if arph[0].opcode == arp.ARP_REQUEST:
-                # print(500)
                 if in_port == 1:
-                    # print(2)
                     eh = ethernet.ethernet(dst="00:00:00:00:00:01", src="00:00:00:00:00:02", ethertype=ETH_TYPE_ARP)
-                    # eh = ethernet.ethernet(dst=arph[0].src_mac, src=self.dmacs[0], ethertype=ETH_TYPE_ARP)
                     ah = arp.arp(opcode=arp.ARP_REPLY, src_mac="00:00:00:00:00:02", src_ip="10.0.0.10",
                                 dst_mac='00:00:00:00:00:01', dst_ip="10.0.0.1")
                     p = packet.Packet()
                     p.add_protocol(eh)
                     p.add_protocol(ah)
-                    # print("sent packet")
                     out = self._send_packet(dp, 1, p)
                     dp.send_msg(out)
                     return
 
                 elif in_port == 2:
-                    # print(3)
                     eh = ethernet.ethernet(dst="00:00:00:00:00:02", src="00:00:00:00:00:01", ethertype=ETH_TYPE_ARP)
                     ah = arp.arp(opcode=arp.ARP_REPLY, src_mac="00:00:00:00:00:01", src_ip="10.0.0.1",
                                 dst_mac="00:00:00:00:00:02", dst_ip="10.0.0.2")
@@ -103,7 +97,6 @@ class L4Lb(app_manager.RyuApp):
                     return
 
                 elif in_port == 3:
-                    # print(4)
                     eh = ethernet.ethernet(dst="00:00:00:00:00:03", src="00:00:00:00:00:01", ethertype=ETH_TYPE_ARP)
                     ah = arp.arp(opcode=arp.ARP_REPLY, src_mac="00:00:00:00:00:01", src_ip="10.0.0.1",
                                 dst_mac="00:00:00:00:00:03", dst_ip="10.0.0.3")
@@ -121,7 +114,6 @@ class L4Lb(app_manager.RyuApp):
             dstport = tcph[0].dst_port
             
             if in_port == 1:
-            # if dstip==self.vip:
 
                 match = (srcip, "10.0.0.10", srcport, dstport)
                 if match in self.ht:
@@ -138,7 +130,6 @@ class L4Lb(app_manager.RyuApp):
 
                 elif self.flag % 2 == 0:
                     self.ht.update({match:2})
-                    # self.ht[match]=2
                     acts = [psr.OFPActionSetField(eth_dst="00:00:00:00:00:02"), psr.OFPActionSetField(ipv4_dst="10.0.0.2"), psr.OFPActionOutput(2)]
                     mtc = psr.OFPMatch(in_port=in_port, eth_type = eth.ethertype, ipv4_src = srcip, ipv4_dst = dstip, tcp_src = srcport, tcp_dst = dstport)
                     self.add_flow(dp, 1, mtc, acts, msg.buffer_id)
@@ -148,7 +139,6 @@ class L4Lb(app_manager.RyuApp):
 
                 elif self.flag % 2 == 1:
                     self.ht.update({match:3})
-                    # self.ht[match]=3
                     acts = [psr.OFPActionSetField(eth_dst="00:00:00:00:00:03"), psr.OFPActionSetField(ipv4_dst="10.0.0.3"), psr.OFPActionOutput(3)]
                     mtc = psr.OFPMatch(in_port=in_port, eth_type = eth.ethertype, ipv4_src = srcip, ipv4_dst = dstip, tcp_src = srcport, tcp_dst = dstport)
                     self.add_flow(dp, 1, mtc, acts, msg.buffer_id)
@@ -157,7 +147,6 @@ class L4Lb(app_manager.RyuApp):
                         return
             
             elif in_port == 2 or in_port == 3:
-            # elif srcip in self.dips:
                 acts = [psr.OFPActionSetField(eth_src="00:00:00:00:00:02"), psr.OFPActionSetField(ipv4_src="10.0.0.10"), psr.OFPActionOutput(1)]
                 mtc = psr.OFPMatch(in_port=in_port, eth_type = eth.ethertype,ipv4_src = srcip, ipv4_dst = dstip, tcp_src = srcport, tcp_dst = dstport)
                 self.add_flow(dp, 1, mtc, acts, msg.buffer_id)
