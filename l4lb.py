@@ -69,8 +69,52 @@ class L4Lb(app_manager.RyuApp):
         #
         iph = pkt.get_protocols(ipv4.ipv4)
         tcph = pkt.get_protocols(tcp.tcp)
+
+        arph = pkt.get_protocols(arp.arp)
         
-        if eth.ethertype == ETH_TYPE_IP and len(tcph)>0 and len(iph)>0:
+        if arph:
+            # print(1)
+            if arph[0].opcode == arp.ARP_REQUEST:
+                # print(500)
+                if in_port == 1:
+                    # print(2)
+                    eh = ethernet.ethernet(dst="00:00:00:00:00:01", src="00:00:00:00:00:02", ethertype=ETH_TYPE_ARP)
+                    # eh = ethernet.ethernet(dst=arph[0].src_mac, src=self.dmacs[0], ethertype=ETH_TYPE_ARP)
+                    ah = arp.arp(opcode=arp.ARP_REPLY, src_mac="00:00:00:00:00:02", src_ip="10.0.0.10",
+                                dst_mac='00:00:00:00:00:01', dst_ip="10.0.0.1")
+                    p = packet.Packet()
+                    p.add_protocol(eh)
+                    p.add_protocol(ah)
+                    # print("sent packet")
+                    out = self._send_packet(dp, 1, p)
+                    dp.send_msg(out)
+                    return
+
+                elif in_port == 2:
+                    # print(3)
+                    eh = ethernet.ethernet(dst="00:00:00:00:00:02", src="00:00:00:00:00:01", ethertype=ETH_TYPE_ARP)
+                    ah = arp.arp(opcode=arp.ARP_REPLY, src_mac="00:00:00:00:00:01", src_ip="10.0.0.1",
+                                dst_mac="00:00:00:00:00:02", dst_ip="10.0.0.2")
+                    p = packet.Packet()
+                    p.add_protocol(eh)
+                    p.add_protocol(ah)
+                    out = self._send_packet(dp, 2, p)
+                    dp.send_msg(out)
+                    return
+
+                elif in_port == 3:
+                    # print(4)
+                    eh = ethernet.ethernet(dst="00:00:00:00:00:03", src="00:00:00:00:00:01", ethertype=ETH_TYPE_ARP)
+                    ah = arp.arp(opcode=arp.ARP_REPLY, src_mac="00:00:00:00:00:01", src_ip="10.0.0.1",
+                                dst_mac="00:00:00:00:00:03", dst_ip="10.0.0.3")
+                    p = packet.Packet()
+                    p.add_protocol(eh)
+                    p.add_protocol(ah)
+                    out = self._send_packet(dp, 3, p)
+                    dp.send_msg(out)
+                    return
+
+        elif eth.ethertype == ETH_TYPE_IP and len(tcph)>0 and len(iph)>0:
             srcip = iph[0].src
             dstip = iph[0].dst
             srcport = tcph[0].src_port
