@@ -25,6 +25,7 @@ class L4Lb(app_manager.RyuApp):
         self.dips = ('10.0.0.2', '10.0.0.3')
         self.dmacs = ('00:00:00:00:00:02', '00:00:00:00:00:03')
         #
+        self.flag = 0
         # write your code here, if needed
         #
 
@@ -68,6 +69,56 @@ class L4Lb(app_manager.RyuApp):
         #
         iph = pkt.get_protocols(ipv4.ipv4)
         tcph = pkt.get_protocols(tcp.tcp)
+        
+        if eth.ethertype == ETH_TYPE_IP and len(tcph)>0 and len(iph)>0:
+            srcip = iph[0].src
+            dstip = iph[0].dst
+            srcport = tcph[0].src_port
+            dstport = tcph[0].dst_port
+            print(self.ht)
+            if in_port == 1:
+
+                match = (srcip, "10.0.0.10", srcport, dstport)
+                if self.ht[match] in self.ht:
+                    if self.ht[match] == 2:
+                        acts = [psr.OFPActionSetField(eth_dst="00:00:00:00:00:02"), psr.OFPActionSetField(ipv4_dst="10.0.0.2"), 
+                            psr.OFPActionOutput(2)]
+                    elif self.ht[match] == 3:
+                        acts = [psr.OFPActionSetField(eth_dst="00:00:00:00:00:03"), psr.OFPActionSetField(ipv4_dst="10.0.0.3"), 
+                            psr.OFPActionOutput(3)]
+                    mtc = psr.OFPMatch(in_port=in_port, eth_type = eth.ethertype, ipv4_src = srcip, ipv4_dst = dstip, tcp_src = srcport, tcp_dst = dstport)
+                    self.add_flow(dp, 1, mtc, acts, msg.buffer_id)
+                    if msg.buffer_id != ofp.OFP_NO_BUFFER:
+                        return
+
+                elif self.flag % 2 == 0:
+                    self.ht.update({match:2})
+                    acts = [psr.OFPActionSetField(eth_dst="00:00:00:00:00:02"), psr.OFPActionSetField(ipv4_dst="10.0.0.2"), psr.OFPActionOutput(2)]
+                    mtc = psr.OFPMatch(in_port=in_port, eth_type = eth.ethertype, ipv4_src = srcip, ipv4_dst = dstip, tcp_src = srcport, tcp_dst = dstport)
+                    self.add_flow(dp, 1, mtc, acts, msg.buffer_id)
+                    self.flag += 1
+                    if msg.buffer_id != ofp.OFP_NO_BUFFER:
+                        return
+
+                elif self.flag % 2 == 1:
+                    self.ht.update({match:3})
+                    acts = [psr.OFPActionSetField(eth_dst="00:00:00:00:00:03"), psr.OFPActionSetField(ipv4_dst="10.0.0.3"), psr.OFPActionOutput(3)]
+                    mtc = psr.OFPMatch(in_port=in_port, eth_type = eth.ethertype, ipv4_src = srcip, ipv4_dst = dstip, tcp_src = srcport, tcp_dst = dstport)
+                    self.add_flow(dp, 1, mtc, acts, msg.buffer_id)
+                    self.flag += 1
+                    if msg.buffer_id != ofp.OFP_NO_BUFFER:
+                        return
+            
+            elif in_port == 2 or in_port == 3:
+                acts = [psr.OFPActionSetField(eth_src="00:00:00:00:00:02"), psr.OFPActionSetField(ipv4_src="10.0.0.10"), psr.OFPActionOutput(1)]
+                mtc = psr.OFPMatch(in_port=in_port, ipv4_src = srcip, ipv4_dst = dstip, tcp_src = srcport, tcp_dst = dstport)
+                self.add_flow(dp, 1, mtc, acts, msg.buffer_id)
+                if msg.buffer_id != ofp.OFP_NO_BUFFER:
+                    return
+            
+        else:
+            return
+
         #
         # write your code here
         #
